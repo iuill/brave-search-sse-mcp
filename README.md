@@ -4,16 +4,26 @@ Brave Search API を利用するための MCP（Model Context Protocol）サー�
 
 ## 前提条件
 
-- Docker がインストールされていること。
-- `mcp-network` という名前の Docker ネットワークが存在すること。
-  ```bash
-  # 存在しない場合、以下のコマンドで作成
-  docker network create mcp-network
-  ```
+- Docker および Docker Compose (通常 Docker Desktop に同梱) がインストールされていること。
 - Brave Search API キーを取得していること。
   - [Brave Search API](https://brave.com/search/api/) から API キーを取得してください。
+- (シェルスクリプトを使用する場合のみ) `mcp-network` という名前の Docker ネットワークが存在すること。
+  ```bash
+  # シェルスクリプト使用時に存在しない場合、以下のコマンドで作成
+  docker network create mcp-network
+  ```
+  (Docker Compose を使用する場合、ネットワークは自動的に作成されます)
 
-## セットアップ
+## セットアップ方法の選択
+
+このプロジェクトのセットアップと管理には、以下のいずれかの方法を使用できます。
+
+- **Docker Compose (推奨):** `docker-compose.yml` ファイルを使用して、ビルド、起動、停止などを管理します。設定がシンプルで一般的です。
+- **シェルスクリプト:** `scripts/brave-search-mcp.sh` を使用して、同様の操作を行います。
+
+以下にそれぞれの方法を説明します。
+
+## セットアップ (共通)
 
 1. **リポジトリの準備:**
    このリポジトリをクローンまたはダウンロードします。
@@ -28,6 +38,26 @@ Brave Search API を利用するための MCP（Model Context Protocol）サー�
 
    **重要:** `.env` は機密情報です。**絶対に Git リポジトリにコミットしないでください。** (`.gitignore` に含まれています)
 
+## セットアップ (Docker Compose)
+
+1. **環境変数の設定:** [セットアップ (共通)](#セットアップ-共通) を参照してください。`.env` ファイルに `PORT` や `RESTART_POLICY` を追加で設定することもできます（任意）。
+   ```dotenv
+   # .env (例)
+   BRAVE_API_KEY=your_api_key_here
+   PORT=3005
+   RESTART_POLICY=unless-stopped
+   ```
+
+2. **Docker イメージのビルド (任意):**
+   `docker compose up` コマンドは通常、必要に応じてイメージを自動でビルドしますが、明示的にビルドすることも可能です。
+   ```bash
+   docker compose build
+   ```
+
+## セットアップ (シェルスクリプト)
+
+1. **環境変数の設定:** [セットアップ (共通)](#セットアップ-共通) を参照してください。
+2. **Docker ネットワークの確認/作成:** [前提条件](#前提条件) を参照し、必要であれば `mcp-network` を作成してください。
 3. **Docker イメージのビルド:**
    プロジェクトの管理には `scripts/brave-search-mcp.sh` スクリプトを使用します。コマンドを簡略化するために、[便利な使い方 (エイリアス)](#便利な使い方-エイリアス) セクションを参照してエイリアス (`brave_search_mcp` など) を設定することを推奨します。
    以下のコマンドで Docker イメージをビルドします (エイリアス設定後):
@@ -35,9 +65,21 @@ Brave Search API を利用するための MCP（Model Context Protocol）サー�
    brave_search_mcp build
    ```
 
-## 起動方法
+## 起動方法 (Docker Compose)
 
-以下のコマンドでサーバーを起動できます。
+以下のコマンドでサーバーを起動します。`.env` ファイルで設定されたポートと再起動ポリシーが使用されます。
+
+```bash
+# ビルドが必要な場合は自動で行い、バックグラウンドで起動
+docker compose up -d --build
+
+# イメージが最新の場合は、バックグラウンドで起動
+docker compose up -d
+```
+
+## 起動方法 (シェルスクリプト)
+
+以下のコマンドでサーバーを起動できます (エイリアス設定後)。
 
 ```bash
 # デフォルト設定で起動
@@ -49,7 +91,23 @@ brave_search_mcp start -P 8080 -r always
 
 サーバーはバックグラウンドで起動します。
 
-## 基本的な使い方 (エイリアス使用)
+## 基本的な使い方 (Docker Compose)
+
+```bash
+# サーバー (コンテナ) の停止と削除
+docker compose down
+
+# サーバーのログを表示 (Ctrl+C で終了)
+docker compose logs -f brave-search-mcp
+
+# コンテナを停止・削除し、イメージも削除
+docker compose down --rmi all
+
+# 実行中のコンテナの確認
+docker compose ps
+```
+
+## 基本的な使い方 (シェルスクリプト - エイリアス使用)
 
 ```bash
 # サーバー (コンテナ) の停止・削除
@@ -106,7 +164,7 @@ Roo Code の MCP 設定例 (Docker Desktop):
 
 _注意: `<PORT>` は実際にサーバーがホスト上で公開しているポート番号に置き換えてください。Linux の IP アドレスは環境によって異なります。ホストのファイアウォール設定も確認してください。_
 
-## 便利な使い方 (エイリアス)
+## 便利な使い方 (シェルスクリプト用エイリアス)
 
 毎回 `./scripts/brave-search-mcp.sh` と入力する代わりに、シェルの設定ファイル (`~/.bashrc`, `~/.zshrc` など) にエイリアスを定義すると便利です。
 

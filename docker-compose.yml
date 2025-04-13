@@ -1,0 +1,28 @@
+# docker-compose.yml
+
+services:
+  brave-search-mcp:
+    build: . # プロジェクトルートの Dockerfile を使用してビルド
+    container_name: brave-search-mcp-server # シェルスクリプトと同じコンテナ名
+    restart: ${RESTART_POLICY:-unless-stopped} # .env から読み込むか、デフォルト値を使用
+    ports:
+      - "${PORT:-3005}:${PORT:-3005}" # .env からホスト/コンテナポートを読み込むか、デフォルト値を使用
+    networks:
+      - mcp-network # 指定したネットワークに接続
+    env_file:
+      - .env # プロジェクトルートの .env ファイルを読み込む (BRAVE_API_KEY など)
+    environment:
+      # コンテナ内で使用するポート番号も .env から取得
+      # .env に PORT=xxxx があればそれが使われ、なければデフォルトの 3005 が使われる
+      - PORT=${PORT:-3005}
+    # 必要に応じてボリュームマウントを追加
+    # volumes:
+    #   - ./some-data:/app/data # 例
+
+networks:
+  mcp-network:
+    # 既存のネットワークに接続する場合 (事前に docker network create mcp-network が必要)
+    # external: true
+    # Docker Compose でネットワークも管理する場合
+    driver: bridge # または他のドライバ
+    name: mcp-network # ネットワーク名を明示的に指定
