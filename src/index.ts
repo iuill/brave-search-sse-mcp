@@ -10,12 +10,6 @@ import { performWebSearch, performLocalSearch } from "./braveApi.js";
 // 環境変数の読み込み
 config();
 
-// Server implementation
-const server = new McpServer({
-  name: "example-servers/brave-search",
-  version: "0.1.0",
-});
-
 // Expressアプリケーション
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3004;
@@ -40,6 +34,87 @@ app.get("/sse", async (req: Request, res: Response) => {
       name: "example-servers/brave-search",
       version: "0.1.0",
     });
+
+    // ツールの登録
+    // Web検索ツール
+    server.tool(
+      "brave_web_search",
+      "Performs a web search using the Brave Search API, ideal for general queries, news, articles, and online content. " +
+        "Use this for broad information gathering, recent events, or when you need diverse web sources. " +
+        "Supports pagination, content filtering, and freshness controls. " +
+        "Maximum 20 results per request, with offset for pagination. ",
+      {
+        query: z.string().describe("Search query (max 400 chars, 50 words)"),
+        count: z
+          .number()
+          .default(10)
+          .describe("Number of results (1-20, default 10)"),
+        offset: z
+          .number()
+          .default(0)
+          .describe("Pagination offset (max 9, default 0)"),
+      },
+      async ({ query, count = 10, offset = 0 }) => {
+        try {
+          const results = await performWebSearch(query, count, offset);
+          return {
+            content: [{ type: "text", text: results }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    );
+
+    // ローカル検索ツール
+    server.tool(
+      "brave_local_search",
+      "Searches for local businesses and places using Brave's Local Search API. " +
+        "Best for queries related to physical locations, businesses, restaurants, services, etc. " +
+        "Returns detailed information including:\n" +
+        "- Business names and addresses\n" +
+        "- Ratings and review counts\n" +
+        "- Phone numbers and opening hours\n" +
+        "Use this when the query implies 'near me' or mentions specific locations. " +
+        "Automatically falls back to web search if no local results are found.",
+      {
+        query: z
+          .string()
+          .describe("Local search query (e.g. 'pizza near Central Park')"),
+        count: z
+          .number()
+          .default(5)
+          .describe("Number of results (1-20, default 5)"),
+      },
+      async ({ query, count = 5 }) => {
+        try {
+          const results = await performLocalSearch(query, count);
+          return {
+            content: [{ type: "text", text: results }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+      },
+    );
+
+
 
     await server.connect(transport);
   } catch (error: unknown) {
@@ -88,84 +163,6 @@ app.post("/messages", async (req: Request, res: Response) => {
   }
 });
 
-// ツールの登録
-// Web検索ツール
-server.tool(
-  "brave_web_search",
-  "Performs a web search using the Brave Search API, ideal for general queries, news, articles, and online content. " +
-    "Use this for broad information gathering, recent events, or when you need diverse web sources. " +
-    "Supports pagination, content filtering, and freshness controls. " +
-    "Maximum 20 results per request, with offset for pagination. ",
-  {
-    query: z.string().describe("Search query (max 400 chars, 50 words)"),
-    count: z
-      .number()
-      .default(10)
-      .describe("Number of results (1-20, default 10)"),
-    offset: z
-      .number()
-      .default(0)
-      .describe("Pagination offset (max 9, default 0)"),
-  },
-  async ({ query, count = 10, offset = 0 }) => {
-    try {
-      const results = await performWebSearch(query, count, offset);
-      return {
-        content: [{ type: "text", text: results }],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-);
-
-// ローカル検索ツール
-server.tool(
-  "brave_local_search",
-  "Searches for local businesses and places using Brave's Local Search API. " +
-    "Best for queries related to physical locations, businesses, restaurants, services, etc. " +
-    "Returns detailed information including:\n" +
-    "- Business names and addresses\n" +
-    "- Ratings and review counts\n" +
-    "- Phone numbers and opening hours\n" +
-    "Use this when the query implies 'near me' or mentions specific locations. " +
-    "Automatically falls back to web search if no local results are found.",
-  {
-    query: z
-      .string()
-      .describe("Local search query (e.g. 'pizza near Central Park')"),
-    count: z
-      .number()
-      .default(5)
-      .describe("Number of results (1-20, default 5)"),
-  },
-  async ({ query, count = 5 }) => {
-    try {
-      const results = await performLocalSearch(query, count);
-      return {
-        content: [{ type: "text", text: results }],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
-    }
-  },
-);
 
 // サーバー初期化と起動
 async function initializeServer() {
