@@ -35,6 +35,12 @@ app.get("/sse", async (req: Request, res: Response) => {
       delete transports[transport.sessionId];
     });
 
+    // Server implementation
+    const server = new McpServer({
+      name: "example-servers/brave-search",
+      version: "0.1.0",
+    });
+
     await server.connect(transport);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
